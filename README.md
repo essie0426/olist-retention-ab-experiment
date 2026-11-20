@@ -2,14 +2,17 @@
 
 > 在巴西电商 Olist 的 10 万单 / 9 张关系表数据上：**纯 SQL 特征工程 → 防泄漏复购倾向建模
 > （LogReg 基线 → XGBoost + SHAP）→ 压力测试 → 挽回券 A/B 实验设计（样本量 + 盈亏平衡）
-> → 离线模拟演练（SIMULATED）**，端到端回答「客户是谁、谁会回来、该不该发券、怎么发」。
+> → 离线模拟演练（SIMULATED）**，端到端回答「客户是谁、谁会回来、该不该发券、怎么发」；
+> 另用 Hillstrom 邮件 RCT **加餐 uplift 建模**（T-Learner + Qini），回答「券/邮件该发给谁才真正多转化」。
 
 ## 项目出处
 
 本项目在 [@Raymond-Chen-das/olist-customer-analysis](https://github.com/Raymond-Chen-das/olist-customer-analysis)
 （00→08 pipeline 底本）基础上扩展：
-- **新增** `09_ab_design.py`（A/B 实验设计 + 样本量 + 券方案盈亏平衡）与
-  `10_ab_simulation.py`（离线模拟演练 + 品类×价值层策略矩阵）
+- **新增** `09_ab_design.py`（A/B 实验设计 + 样本量 + 券方案盈亏平衡）、
+  `10_ab_simulation.py`（离线模拟演练 + 品类×价值层策略矩阵）与
+  `11_uplift.py`（uplift 建模：T-Learner 双版本 + Qini 评估 + 基线对比，
+  数据为 Hillstrom 邮件 RCT，选源决策记录见 `docs/uplift-report.md` 第 2 节）
 - **修复** `03_eda.py` 中 H2 检验未处理 NaN 导致 p=nan 的问题（详见代码内注释）
 - README 重写为简体中文，结果数字为本仓库复现值
 
@@ -27,6 +30,9 @@
     R$5 定额券只需 **+19%**、R$10 需 +46% → 主实验推荐 R$5 定额券 |
 | A/B 可行性 | 目标池 64,741 人：+20% 相对 MDE 下 power 93~99%（可行）；
     +10% MDE 不可行（power 24~59%） |
+| **Uplift 加餐（Hillstrom RCT）** | Womens 邮件 ATE +0.42pp 但效果集中在女性客户
+    （子群 +0.514pp vs 男性 +0.063pp）；T-Learner 在该 campaign 显著优于
+    Response 基线（Qini 系数 +6 vs −1），top 20% 定向 = 1.81× 整体增量效率 |
 
 ## 方法要点
 
@@ -54,6 +60,7 @@
 | 仪表盘 | `08_report.py` | 单页整合 | `index.html` |
 | **A/B 设计（新增）** | `09_ab_design.py` | 目标池、校准 p0、样本量、券盈亏平衡 | `docs/ab-experiment-design.md` + `outputs/ab_design.html` |
 | **模拟演练（新增）** | `10_ab_simulation.py` | 注入效应 0/10/20/50% 演练 + 策略矩阵 | `outputs/ab_simulation.html`（全部标注 SIMULATED） |
+| **Uplift（加餐）** | `11_uplift.py` | Hillstrom RCT 上 T-Learner（XGB/线性）+ Qini + 基线对比 | `outputs/uplift.html` + `docs/uplift-report.md` |
 
 ## 环境与运行
 
@@ -64,9 +71,12 @@ python -m venv .venv
 
 # 数据：Kaggle「Brazilian E-Commerce Public Dataset by Olist」9 张 CSV 放入 raw/
 #       （公开镜像：github.com/Sangamesh2703/Brazilian-E-Commerce）
+# 另：raw/hillstrom.csv（MineThatData 2008 邮件 RCT，64,000 行，仅模块 11 需要）
+#       官方直链见 docs/uplift-report.md 第 2 节
 
 for s in 00_validate_contract 01_build_db 02_build_features 03_eda 04_rfm \
-         05_propensity 06_xgb_shap 07_stress_test 08_report 09_ab_design 10_ab_simulation; do
+         05_propensity 06_xgb_shap 07_stress_test 08_report 09_ab_design \
+         10_ab_simulation 11_uplift; do
   .venv/Scripts/python.exe $s.py
 done
 ```
@@ -79,6 +89,12 @@ done
    模拟演练的价值是「上线前把预注册分析流水线跑通 + 展示设计严谨性」，
    所有模拟输出均已标注 SIMULATED
 3. p0 为校准后模型均值（非实测基线），毛利率 20% 为行业量级假设
+4. **Uplift 模块用的是另一个数据集（Hillstrom RCT）**：Olist 无随机化、
+   无法评估 CATE 排序；Criteo Uplift 因 v1 官方勘误泄漏 + v2 下载源失效
+   而弃用（决策记录见 `docs/uplift-report.md` 第 2 节）
+5. uplift 的 conversion 目标 test 集增量转化仅 ~27–46 人，模型间 Qini 差异
+   在抽样噪声范围内——**方向性结论（T-Learner ≥ Response 基线、
+   Womens campaign 异质性结构）稳健，单点数字不作主张**
 
 ## 技术栈
 

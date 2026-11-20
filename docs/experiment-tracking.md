@@ -61,3 +61,22 @@
 
 ### 交付选择
 **LogReg(B) 为主交付模型**（可解释、胜算比直接对应动作）；XGBoost+SHAP 作对照，佐证天花板由数据决定。
+
+---
+
+## 模块七：Uplift 建模（11_uplift.py，2026-11-20 完成）
+
+- 问题框架：定向排序从 p(Y|x)（saver trap）切换为 CATE = P(Y=1|x,T=1) − P(Y=1|x,T=0)。
+- 数据源决策（详见 docs/uplift-report.md §2）：Criteo v1 有官方勘误泄漏、v2.1 官方链接 404 且
+  托管方 HF 不可达 → 改用 Hillstrom/Meggitt 2008 邮件 RCT（64,000 行，segment 随机化，
+  三组基线均衡已核验）。mens/womens 列经交叉验证判定为顾客性别属性而非投放标志。
+- 任务：Mens / Womens 两个 campaign，共用 No E-Mail 对照组；主目标 conversion、
+  辅助目标 visit；按 segment 分层 70/30，seed=45。
+- 方法：T-Learner 双版本（XGBoost 保守配置 150 树/depth3/mcw100——初版 300 树/depth4
+  实测过拟合：臂内正样本仅 87–186 个，CATE 退化为噪声之差；线性 LogReg C=0.5 稳健性对照）；
+  基线：随机 / Response 池化 / Treatment-only。指标：ATE、Qini 曲线/系数、top 20% 切片。
+- 结果：Mens ATE +0.720pp、Womens ATE +0.419pp；Womens 上 T-Learner(线性) Qini 系数 +6
+  显著优于 Response −1（top20% 增量 = 1.81× 整体）；Mens 上各模型 Qini 差异 ±5 在噪声范围内
+  （test 增量转化仅 ~27–46 人）。visit（稠密目标）上 Womens：T-Learner +47/+50 vs Response +2。
+- 统计口径：只主张方向性结论；conversion 目标单点 Qini 数字不作推断（事件数不足）。
+- 交付：outputs/uplift.html + docs/uplift-report.md。

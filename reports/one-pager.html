@@ -44,7 +44,7 @@ a{color:var(--accent);text-decoration:none}
   <h1>Olist 用户留存分析 + 挽回券 A/B 实验设计</h1>
   <p class="dek">基于巴西电商 Olist 9.6 万 delivered 订单（9 张关系表）独立完成端到端用户留存分析，并把预测推进到营销决策：
   完成挽回券 A/B 实验的基线校准、样本量计算、券策略盈亏平衡推导，以及含负对照的离线模拟验证。
-  原案 <span class="mono">@Raymond-Chen-das/olist-customer-analysis</span>，本人扩展模块五（A/B 设计）与模块六（模拟演练）并重写工程文档。</p>
+  原案 <span class="mono">@Raymond-Chen-das/olist-customer-analysis</span>，本人扩展模块五（A/B 设计）、模块六（模拟演练）与模块七（Uplift 加餐，Hillstrom RCT）并重写工程文档。</p>
 
   <div class="stat-row">
     <div class="stat"><div class="num">96,478</div><div class="cap">delivered 订单<br>93,358 客户 / 复购率 3.0%</div></div>
@@ -61,6 +61,7 @@ a{color:var(--accent);text-decoration:none}
         <li><b>防泄漏复购建模</b>：仅用首单时点特征 + 时间切分 + 训练集 fit 前处理；LogReg 基线 → XGBoost 对照（PR-AUC 0.050→0.060），SHAP 解释；5 种子 × 时间切分 × 特征消融压力测试。</li>
         <li><b>模块五 A/B 实验设计（本人新增）</b>：Platt 校准修正未校准概率 → 基线 p0=2.94%；两比例 z 检验样本量（p0 ∈ {1,2,3}% × MDE ∈ {+10,20,50}%）；券策略盈亏平衡推导；预注册分析计划（ITT、单主指标、禁止偷看）。</li>
         <li><b>模块六 离线模拟演练（本人新增，SIMULATED）</b>：64,741 人目标池注入 0/10/20/50% 效应（0% 为负对照），跑通预注册分析流水线；品类 × 价值层策略矩阵。</li>
+        <li><b>模块七 Uplift 建模（本人新增，11_uplift.py）</b>：换用 Hillstrom 邮件 RCT（64,000 行，随机化可验证），T-Learner（XGBoost/线性双版本）估计 CATE，Qini 曲线 + top 切片对比随机 / 池化 / 处理臂单学习器基线，量化 saver trap。选源决策（弃用 Criteo 的原因）写入报告第 2 节。</li>
       </ul>
 
       <h2><span class="no">02</span>关键发现</h2>
@@ -69,6 +70,7 @@ a{color:var(--accent);text-decoration:none}
         <li><b>复购由首单品类驱动</b>（家用/可补货 vs 一次性嗜好约 6×）；配送/评论影响满意度（rho=−0.24）而非留存（p=0.16/0.20 不显著）。</li>
         <li><b>券盈亏平衡与 p0 无关</b>（推导中 p0 约掉）：等值券（10%×AOV）需 +100% 相对提升才回本、R$5 定额券只需 +19% → 主实验推荐 R$5 定额券；+20% MDE 样本量可行（power 93~99%）、+10% 不可行并给出依据。</li>
         <li><b>模拟验证流水线</b>：0% 负对照 p=0.80 正确"检不出"；+20% 情景 p=1.3e-12、R$5 券 ROI +2.44×；Top 品类（bed_bath_table / sports_leisure / furniture_decor）与 SHAP 互证。</li>
+        <li><b>Uplift ≠ Response</b>：Womens 邮件 ATE +0.42pp，但效果几乎全在女性客户（womens=1 +0.514pp vs womens=0 +0.063pp，差 8×）；该 campaign 上 T-Learner 的 Qini 系数（+6）系统性优于池化 Response 基线（−1），top 20% 定向 = 1.81× 整体增量效率。</li>
       </ul>
     </div>
 
@@ -80,6 +82,8 @@ a{color:var(--accent);text-decoration:none}
         <span class="tag">概率校准（Platt）</span><span class="tag">A/B 实验设计</span>
         <span class="tag">样本量 / Power</span><span class="tag">不平衡分类（PR-AUC / lift）</span>
         <span class="tag">预注册分析</span><span class="tag">Plotly 可视化</span>
+        <span class="tag">Uplift 建模（T-Learner / CATE）</span><span class="tag">Qini 曲线 / AUUC</span>
+        <span class="tag">因果推断 / RCT 评估</span>
       </div>
 
       <h2><span class="no">04</span>诚实边界（面试口径）</h2>
@@ -87,6 +91,7 @@ a{color:var(--accent);text-decoration:none}
         <p><b>数据天花板</b>：仅凭首单信息，复购预测上限约 ROC 0.61——这是数据边界，不是方法问题；要提升需行为/营销数据。</p>
         <p style="margin-top:8px"><b>无真实因果</b>：Olist 是历史数据，所有"实验结果"均为注入效应的离线模拟（已标注 SIMULATED），用途是验证分析流水线，不代表真实 uplift。</p>
         <p style="margin-top:8px"><b>p0 非实测</b>：2.94% 为校准后模型均值，真实上线前需用最近 90 天数据重新校准。</p>
+        <p style="margin-top:8px"><b>Uplift 样本量有限</b>：模块七的 conversion 目标 test 集增量转化仅 ~27–46 人，模型间 Qini 差异在抽样噪声范围内——只主张方向性结论，单点数字不作推断；且用的是 Hillstrom 邮件 RCT 而非 Olist 本身。</p>
       </div>
     </div>
   </div>

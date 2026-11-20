@@ -129,7 +129,7 @@ footer .files{font-family:"IBM Plex Mono",monospace;font-size:.78rem;margin-top:
 </style></head><body>
 <nav class="nav"><div class="wrap">
   <span class="brand">Olist · Customer Analytics</span>
-  <span class="links"><a href="#find">发现</a><a href="#cohort">留存</a><a href="#seg">客群</a><a href="#drv">复购驱动</a><a href="#mdl">模型</a><a href="#ab">A/B 实验</a></span>
+  <span class="links"><a href="#find">发现</a><a href="#cohort">留存</a><a href="#seg">客群</a><a href="#drv">复购驱动</a><a href="#mdl">模型</a><a href="#ab">A/B 实验</a><a href="#uplift">Uplift</a></span>
 </div></nav>
 <div class="wrap">
   <header class="masthead reveal">
@@ -137,7 +137,7 @@ footer .files{font-family:"IBM Plex Mono",monospace;font-size:.78rem;margin-top:
     <h1>回购的人，<br><em>买了什么？</em></h1>
     <p class="dek">97% 的客户只来一次。本案用 SQL、RFM 与 cohort 留存分析，找出关键的 3%——并用假设检验推翻了一个你以为理所当然的假设。</p>
     <div class="meta"><span><b>数据</b> Olist 2016–2018</span><span><b>客户</b> 93,358 位</span>
-      <span><b>方法</b> SQL · RFM · Cohort · LogReg/XGBoost · A/B 设计</span><span><b>原案</b> raymond.chen.das · <b>扩展</b> A/B 设计与模拟演练</span></div>
+      <span><b>方法</b> SQL · RFM · Cohort · LogReg/XGBoost · A/B 设计</span><span><b>原案</b> raymond.chen.das · <b>扩展</b> A/B 设计 · 模拟演练 · Uplift 加餐</span></div>
   </header>
 
   <section class="stats reveal" style="--rd:100ms">
@@ -232,10 +232,28 @@ footer .files{font-family:"IBM Plex Mono",monospace;font-size:.78rem;margin-top:
     </div>
   </section>
 
+  <section id="uplift" class="blk reveal">
+    <div class="sec-head"><span class="sec-no">07</span><h2>Uplift 建模 — 券/邮件到底该发给谁</h2></div>
+    <p class="lede">09/10 按 p(Y|x) 排序存在 <b>saver trap</b>：高概率人群往往「不发也会买」。模块 11 换用 <b>Hillstrom 邮件 RCT</b>（64,000 行，随机化可验证）跑通 uplift 全流程：T-Learner（XGBoost/线性双版本）估计 CATE，Qini 曲线 + top 切片对比随机 / 单学习器基线。完整报告（含数据源决策记录）见 <span class="mono">docs/uplift-report.md</span>。</p>
+    <div class="model-grid">
+      <div class="mcard"><div class="mv">+0.42 pp</div><div class="ml">Womens 邮件 ATE（test 集）；但效果几乎全在女性客户</div></div>
+      <div class="mcard"><div class="mv">8×</div><div class="ml">子群效应差：womens=1 ATE +0.514pp vs womens=0 +0.063pp</div></div>
+      <div class="mcard"><div class="mv">+6 vs −1</div><div class="ml">T-Learner(线性) vs Response 池化基线的 Qini 系数（Womens conv）</div></div>
+      <div class="mcard"><div class="mv">1.81×</div><div class="ml">top 20% 定向的增量效率（Womens，T-Learner 线性）</div></div>
+      <div class="mcard"><div class="mv">+50 vs +2</div><div class="ml">换稠密目标 visit 后 T-Learner vs Response 的 Qini 系数（Womens）</div></div>
+      <div class="mcard"><div class="mv">0.47% vs 1.33%</div><div class="ml">top 20% 切片对照组率：T-Learner(XGB) vs Treat-only（Mens）— saver trap 量化</div></div>
+    </div>
+    <div class="aside">
+      <span class="tag">诚实声明 · 数据源与统计口径</span>
+      <p>为什么不是 Criteo：v1 有<b>官方勘误泄漏</b>（可用广告商身份抬高指标）、v2.1 官方下载链已失效且托管方不可达 → 改用 Hillstrom 经典 RCT。选源排查全过程写入报告第 2 节，这是面试可讲的工程故事。</p>
+      <p>conversion 目标 test 集增量转化仅 ~27–46 人，<b>模型间差异在抽样噪声范围内</b>——只主张方向性结论（T-Learner ≥ Response 基线、Womens 异质性结构真实存在），单点数字不作推断。</p>
+    </div>
+  </section>
+
   <footer class="reveal">
     <div class="eyebrow">Reproducibility & Method</div>
-    <p>Python 3.13 · 随机种子全固定 · 由 raw CSV 确定性重建（<span class="mono">00 → 10</span>）。客户主键采 <span class="mono">customer_unique_id</span> 跨单追踪；有效订单仅取 <span class="mono">delivered</span>。完整决策链见 <span class="mono">docs/experiment-tracking.md</span>。</p>
-    <div class="files">细部互动图：outputs/eda_report · rfm_segments · propensity · xgb_shap · ab_design · ab_simulation (.html)<br>文档：docs/data-contract · eda-summary · experiment-tracking · evaluation-report · ab-experiment-design</div>
+    <p>Python 3.13 · 随机种子全固定 · 由 raw CSV 确定性重建（<span class="mono">00 → 11</span>）。客户主键采 <span class="mono">customer_unique_id</span> 跨单追踪；有效订单仅取 <span class="mono">delivered</span>。完整决策链见 <span class="mono">docs/experiment-tracking.md</span>。</p>
+    <div class="files">细部互动图：outputs/eda_report · rfm_segments · propensity · xgb_shap · ab_design · ab_simulation · uplift (.html)<br>文档：docs/data-contract · eda-summary · experiment-tracking · evaluation-report · ab-experiment-design · uplift-report</div>
   </footer>
 </div>
 </body></html>

@@ -1,6 +1,6 @@
-"""共用視覺化工具：把多張 plotly 圖組成單一、可分享的 HTML 檔。
+"""共用可视化工具：把多张 plotly 图组成单一、可分享的 HTML 文件。
 
-模塊五的成果報告也會重用這個 helper。
+模块五起的成果报告都会重用这个 helper。
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 
 _CSS = (
-    "body{font-family:'Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif;"
+    "body{font-family:'Noto Sans SC','Microsoft YaHei',system-ui,sans-serif;"
     "max-width:1040px;margin:24px auto;padding:0 16px;color:#1a1a1a;line-height:1.6}"
     "h1{border-bottom:3px solid #2c3e50;padding-bottom:8px}"
     "h2{margin-top:36px;color:#2c3e50}"
@@ -30,7 +30,7 @@ def save_report(blocks: list[tuple[str, go.Figure | str]], path: Path, title: st
         if heading:
             parts.append(f"<h2>{heading}</h2>")
         if isinstance(content, str):
-            # 以 '<' 開頭視為原始 HTML（表格等）直接嵌入，否則包成提示段落
+            # 以 '<' 开头视为原始 HTML（表格等）直接嵌入，否则包成提示段落
             parts.append(content if content.lstrip().startswith("<")
                          else f"<p class='note'>{content}</p>")
         else:
@@ -38,7 +38,7 @@ def save_report(blocks: list[tuple[str, go.Figure | str]], path: Path, title: st
                 full_html=False,
                 include_plotlyjs="cdn" if first_fig else False))
             first_fig = False
-    html = ("<!doctype html><html lang='zh-Hant'><head><meta charset='utf-8'>"
+    html = ("<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
             f"<title>{title}</title><style>{_CSS}</style></head>"
             f"<body>{''.join(parts)}</body></html>")
     path.write_text(html, encoding="utf-8")

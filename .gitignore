@@ -3,8 +3,10 @@
 __pycache__/
 *.pyc
 
-# Generated data & outputs (regenerable from raw via 00→08)
+# Generated data & outputs (regenerable from raw via 00→11)
 data/*.db
+# Criteo 排查参考材料（286MB，Zenodo 23312512 解包），仅本地保留
+data/criteo_src/
 outputs/
 
 # Raw CSVs are large (~121MB) — download from Kaggle (see README)
