@@ -1,0 +1,120 @@
+<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Project 1 面试摘要 — Olist 用户留存与挽回券 A/B 实验设计</title><style>
+:root{--paper:#F3EFE6;--paper-2:#ECE5D6;--ink:#1C1814;--ink-soft:#5A5147;
+--rule:rgba(28,24,20,.16);--accent:#C1432B;--accent-2:#1F4D43;--gold:#A8782F}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:"Fraunces","Noto Serif SC",Georgia,"Songti SC",serif;
+line-height:1.55;-webkit-font-smoothing:antialiased}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+.wrap{max-width:1020px;margin:0 auto;padding:36px 30px 60px}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;letter-spacing:.26em;
+text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:14px}
+h1{font-size:clamp(1.7rem,4vw,2.5rem);font-weight:900;line-height:1.15;letter-spacing:-.01em;margin-bottom:10px}
+.dek{color:var(--ink-soft);max-width:72ch;margin-bottom:24px;font-size:.98rem}
+.cols{display:grid;grid-template-columns:1.6fr 1fr;gap:34px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+h2{font-size:1.05rem;font-weight:600;margin:26px 0 10px;padding-top:16px;border-top:1.5px solid var(--ink);
+display:flex;align-items:baseline;gap:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--accent)}
+ul{padding-left:1.2em}
+li{margin:7px 0;font-size:.92rem;color:var(--ink-soft)}
+li b,li strong{color:var(--ink)}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1.5px solid var(--ink);border-bottom:1px solid var(--rule)}
+@media(max-width:820px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:16px 14px;border-right:1px solid var(--rule)}
+.stat:last-child{border-right:none}
+.stat .num{font-size:1.7rem;font-weight:900;letter-spacing:-.02em}
+.stat:nth-child(odd) .num{color:var(--accent)}
+.stat .cap{font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--ink-soft);margin-top:5px;line-height:1.5}
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+.tbl th{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
+text-align:left;padding:8px 10px;color:var(--paper);background:var(--ink);font-weight:500}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--rule);color:var(--ink-soft)}
+.tbl td b{color:var(--ink)}
+.tbl td.n{font-family:"IBM Plex Mono",monospace;text-align:right}
+.tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+text-transform:uppercase;border:1px solid var(--rule);padding:2px 8px;margin:2px 4px 2px 0;color:var(--ink-soft)}
+.aside{margin-top:8px;padding:16px 18px;background:var(--paper-2);border-left:3px solid var(--accent);font-size:.9rem;color:var(--ink-soft)}
+.aside b{color:var(--ink)}
+footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+font-size:.72rem;color:var(--ink-soft);line-height:2}
+a{color:var(--accent);text-decoration:none}
+</style></head><body>
+<div class="wrap">
+  <div class="eyebrow">Project 1 · One-Page Brief · 业务数据科学</div>
+  <h1>Olist 用户留存分析 + 挽回券 A/B 实验设计</h1>
+  <p class="dek">基于巴西电商 Olist 9.6 万 delivered 订单（9 张关系表）独立完成端到端用户留存分析，并把预测推进到营销决策：
+  完成挽回券 A/B 实验的基线校准、样本量计算、券策略盈亏平衡推导，以及含负对照的离线模拟验证。
+  原案 <span class="mono">@Raymond-Chen-das/olist-customer-analysis</span>，本人扩展模块五（A/B 设计）与模块六（模拟演练）并重写工程文档。</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="num">96,478</div><div class="cap">delivered 订单<br>93,358 客户 / 复购率 3.0%</div></div>
+    <div class="stat"><div class="num">0.592</div><div class="cap">复购模型 ROC-AUC<br>5 种子稳健 ±0.008</div></div>
+    <div class="stat"><div class="num">1.8×</div><div class="cap">top-decile lift<br>前 10% 捕获 ~18% 复购者</div></div>
+    <div class="stat"><div class="num">+19%</div><div class="cap">R$5 定额券盈亏平衡<br>（与 p0 无关，核心发现）</div></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <h2><span class="no">01</span>做了什么</h2>
+      <ul>
+        <li><b>纯 SQL 特征工程</b>：SQLite 建库，CTE / Window / NTILE 构建 RFM 评分箱、首单特征、Cohort 留存，无 pandas 预处理。</li>
+        <li><b>防泄漏复购建模</b>：仅用首单时点特征 + 时间切分 + 训练集 fit 前处理；LogReg 基线 → XGBoost 对照（PR-AUC 0.050→0.060），SHAP 解释；5 种子 × 时间切分 × 特征消融压力测试。</li>
+        <li><b>模块五 A/B 实验设计（本人新增）</b>：Platt 校准修正未校准概率 → 基线 p0=2.94%；两比例 z 检验样本量（p0 ∈ {1,2,3}% × MDE ∈ {+10,20,50}%）；券策略盈亏平衡推导；预注册分析计划（ITT、单主指标、禁止偷看）。</li>
+        <li><b>模块六 离线模拟演练（本人新增，SIMULATED）</b>：64,741 人目标池注入 0/10/20/50% 效应（0% 为负对照），跑通预注册分析流水线；品类 × 价值层策略矩阵。</li>
+      </ul>
+
+      <h2><span class="no">02</span>关键发现</h2>
+      <ul>
+        <li><b>97% 客户只买一次</b>：获取型生意，留存是难题（cohort 第 1 月即崩至 &lt;1%）。</li>
+        <li><b>复购由首单品类驱动</b>（家用/可补货 vs 一次性嗜好约 6×）；配送/评论影响满意度（rho=−0.24）而非留存（p=0.16/0.20 不显著）。</li>
+        <li><b>券盈亏平衡与 p0 无关</b>（推导中 p0 约掉）：等值券（10%×AOV）需 +100% 相对提升才回本、R$5 定额券只需 +19% → 主实验推荐 R$5 定额券；+20% MDE 样本量可行（power 93~99%）、+10% 不可行并给出依据。</li>
+        <li><b>模拟验证流水线</b>：0% 负对照 p=0.80 正确"检不出"；+20% 情景 p=1.3e-12、R$5 券 ROI +2.44×；Top 品类（bed_bath_table / sports_leisure / furniture_decor）与 SHAP 互证。</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2><span class="no">03</span>技能栈</h2>
+      <div>
+        <span class="tag">SQL / SQLite / CTE / Window</span><span class="tag">Python 3.13</span>
+        <span class="tag">pandas / scikit-learn</span><span class="tag">XGBoost + SHAP</span>
+        <span class="tag">概率校准（Platt）</span><span class="tag">A/B 实验设计</span>
+        <span class="tag">样本量 / Power</span><span class="tag">不平衡分类（PR-AUC / lift）</span>
+        <span class="tag">预注册分析</span><span class="tag">Plotly 可视化</span>
+      </div>
+
+      <h2><span class="no">04</span>诚实边界（面试口径）</h2>
+      <div class="aside">
+        <p><b>数据天花板</b>：仅凭首单信息，复购预测上限约 ROC 0.61——这是数据边界，不是方法问题；要提升需行为/营销数据。</p>
+        <p style="margin-top:8px"><b>无真实因果</b>：Olist 是历史数据，所有"实验结果"均为注入效应的离线模拟（已标注 SIMULATED），用途是验证分析流水线，不代表真实 uplift。</p>
+        <p style="margin-top:8px"><b>p0 非实测</b>：2.94% 为校准后模型均值，真实上线前需用最近 90 天数据重新校准。</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="no">05</span>样本量速查（α=0.05 双侧，power=0.8，池半量 32,370/组）</h2>
+  <table class="tbl">
+    <thead><tr><th>p0</th><th>MDE（相对）</th><th>n / 组</th><th>可行性</th><th>功效</th><th>结论</th></tr></thead>
+    <tbody>
+      <tr><td>2%</td><td>+10%</td><td class="n">80,682</td><td>否</td><td class="n">43%</td><td>所需样本超池 2.5 倍</td></tr>
+      <tr><td>2%</td><td><b>+20%</b></td><td class="n"><b>21,109</b></td><td><b>是</b></td><td class="n"><b>93%</b></td><td><b>主实验情景</b></td></tr>
+      <tr><td>3%</td><td>+10%</td><td class="n">53,211</td><td>否</td><td class="n">59%</td><td>不可行</td></tr>
+      <tr><td>3%</td><td><b>+20%</b></td><td class="n"><b>13,914</b></td><td><b>是</b></td><td class="n"><b>99%</b></td><td><b>主实验情景</b></td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="no">06</span>券策略盈亏平衡（M=20%，单次复购毛利 31.8 BRL）</h2>
+  <table class="tbl">
+    <thead><tr><th>方案</th><th>券面值</th><th>break-even 相对提升 r*</th><th>+20% 情景 ROI（每 1 万人）</th></tr></thead>
+    <tbody>
+      <tr><td>等值券 10%×AOV</td><td class="n">≈16 BRL</td><td class="n">+100%</td><td class="n">−0.67×（负）</td></tr>
+      <tr><td><b>R$5 定额券（推荐）</b></td><td class="n"><b>5 BRL</b></td><td class="n"><b>+19%</b></td><td class="n"><b>+0.06×（正）</b></td></tr>
+      <tr><td>R$10 定额券</td><td class="n">10 BRL</td><td class="n">+46%</td><td class="n">−0.47×（需 LTV 视角）</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    复现：00→10 脚本依序执行（种子全固定：建模 42 / 分流 43 / 抽样 44）· 完整文档见 docs/ · 可视化首页 index.html<br>
+    项目路径 reports/one-pager.html · 原案署名 @Raymond-Chen-das/olist-customer-analysis（无 LICENSE，已署名说明扩展关系）
+  </footer>
+</div>
+</body></html>
